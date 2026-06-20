@@ -1,3 +1,12 @@
+import sys
+import os
+from pathlib import Path
+
+# Target the root directory (one level up from frontend)
+root_path = str(Path(__file__).resolve().parent.parent)
+if root_path not in sys.path:
+    sys.path.insert(0, root_path)
+    
 import streamlit as st
 from backend import main as backend_main
 
