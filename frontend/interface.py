@@ -1,7 +1,5 @@
 import streamlit as st
-import requests
-
-API_URL = "http://localhost:8000/predict/"
+from backend import main as backend_main
 
 st.set_page_config(page_title="Advertising Sales Forecast", layout="centered")
 st.title("Advertising Spend Sales Forecast")
@@ -14,19 +12,19 @@ tv_budget = st.slider("TV Budget", min_value=0.0, max_value=400.0, value=150.0, 
 radio_budget = st.slider("Radio Budget", min_value=0.0, max_value=100.0, value=30.0, step=1.0)
 digital_budget = st.slider("Digital Budget", min_value=0.0, max_value=100.0, value=25.0, step=1.0)
 
+
+# Ensure model artifacts are loaded
+try:
+    backend_main.load_artifacts()
+except Exception as exc:
+    st.error(f"Model artifacts not found or failed to load: {exc}")
+
 if st.button("Predict Sales"):
-    payload = {
-        "tv_budget": tv_budget,
-        "radio_budget": radio_budget,
-        "digital_budget": digital_budget,
-    }
     try:
-        response = requests.post(API_URL, json=payload, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        st.success(f"Predicted Sales: {data['predicted_sales']:.2f}")
-    except requests.RequestException as exc:
-        st.error(f"Prediction request failed: {exc}")
+        predicted = backend_main.predict_budget(tv_budget, radio_budget, digital_budget)
+        st.success(f"Predicted Sales: {predicted:.2f}")
+    except Exception as exc:
+        st.error(f"Prediction failed: {exc}")
 
 st.markdown("---")
 
@@ -50,15 +48,9 @@ scenario_b = {
 }
 
 if st.button('Compare Scenarios'):
-    def get_prediction(tv, radio, digital):
-        payload = {'tv_budget': tv, 'radio_budget': radio, 'digital_budget': digital}
-        response = requests.post(API_URL, json=payload, timeout=10)
-        response.raise_for_status()
-        return response.json()['predicted_sales']
-
     try:
-        sales_a = get_prediction(scenario_a['tv'], scenario_a['radio'], scenario_a['digital'])
-        sales_b = get_prediction(scenario_b['tv'], scenario_b['radio'], scenario_b['digital'])
+        sales_a = backend_main.predict_budget(scenario_a['tv'], scenario_a['radio'], scenario_a['digital'])
+        sales_b = backend_main.predict_budget(scenario_b['tv'], scenario_b['radio'], scenario_b['digital'])
         st.write(f"**{scenario_a['name']} predicted sales:** {sales_a:.2f}")
         st.write(f"**{scenario_b['name']} predicted sales:** {sales_b:.2f}")
 
@@ -68,5 +60,5 @@ if st.button('Compare Scenarios'):
             st.success(f"{scenario_b['name']} performs better by {sales_b - sales_a:.2f} sales units.")
         else:
             st.info('Both scenarios forecast the same sales.')
-    except requests.RequestException as exc:
+    except Exception as exc:
         st.error(f"Scenario comparison failed: {exc}")
